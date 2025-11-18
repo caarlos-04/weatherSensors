@@ -282,6 +282,8 @@ class SensorBrain:
             "neighbor_count": len(self.neighbor_beliefs),
             "neighbor_avg_risk": round(self.get_neighbors_average_risk(), 3) if self.neighbor_beliefs else None,
             "sensitivity": round(self.sensitivity, 2),
+            "false_alarm_count": self.false_alarm_count,
+            "missed_event_count": self.missed_event_count,
             "would_alert": self.should_alert()
         }
     
