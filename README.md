@@ -20,8 +20,9 @@ This system demonstrates key DAI concepts:
    - Manages sensor connections (max 6 sensors)
    - Auto-assigns sectors to connecting sensors
    - Logs telemetry, beliefs, and alerts
-   - Provides feedback for sensor learning
-   - Displays system statistics
+   - Provides intelligent feedback for sensor learning
+   - Analyzes alerts for false alarms and missed events
+   - Displays system statistics in terminal
 
 2. **Sensors** (`sensor_mqtt.py`)
    - Autonomous weather sensors with local intelligence
@@ -31,6 +32,7 @@ This system demonstrates key DAI concepts:
    - Share beliefs with neighbor sensors
    - Generate alerts through distributed consensus
    - Adapt publishing interval based on neighbor activity
+   - Learn and adjust sensitivity from monitor feedback
 
 3. **Sensor Brain** (`sensor_intelligence.py`)
    - Intelligence module for each sensor
@@ -39,7 +41,17 @@ This system demonstrates key DAI concepts:
    - Calculates local risk assessment
    - Processes neighbor beliefs
    - Makes autonomous decisions
-   - Learns from monitor feedback
+   - Learns from monitor feedback (adjusts sensitivity)
+
+4. **GUI Monitor** (`monitor_gui.py`)
+   - Real-time graphical dashboard using Tkinter
+   - Visual representation of all 6 sectors
+   - Color-coded risk levels (green/yellow/orange/red)
+   - Shows active sensors per sector
+   - Displays average sensitivity and failure counts
+   - Detects and highlights sensor disagreements
+   - Shows active alerts with visual indicators
+   - Runs independently alongside console monitor
 
 ### Communication Flow
 
@@ -78,14 +90,33 @@ This system demonstrates key DAI concepts:
 - **Belief Sharing**: Sensors publish their risk opinions to neighbors
 - **Consensus Building**: Alerts generated when multiple sensors agree on high risk
 - **Adaptive Intervals**: Publishing frequency adjusts based on neighbor count
-- **Learning**: Sensors adjust sensitivity based on false alarm/missed event feedback
+- **Adaptive Learning**: Sensors adjust sensitivity (0.5-1.5) based on feedback:
+  - **False Alarm**: Sensitivity decreases by 0.1 (becomes less sensitive)
+  - **Missed Event**: Sensitivity increases by 0.1 (becomes more sensitive)
+  - **Correct Prediction**: Sensitivity gradually converges to optimal 1.0
 
 ### Monitoring & Visualization
-- **Real-time Stats**: Periodic display of system state
-- **Risk Distribution**: Visual representation of risk levels across sensors
+
+#### Console Monitor
+- **Real-time Stats**: Periodic display of system state in terminal
+- **Risk Distribution**: Representation of risk levels across sensors
 - **Message Tracking**: Count of data, beliefs, alerts, and status messages
 - **Connection Status**: List of active sensors with their sectors
 - **Interactive Commands**: `status` for on-demand stats, `quit` for graceful shutdown
+- **Feedback Analysis**: Automatic detection of false alarms and missed events
+
+#### GUI Monitor
+- **Visual Dashboard**: Real-time Tkinter interface showing all 6 sectors
+- **Color-Coded Risk**: Green (safe), Yellow (low), Orange (warning), Red (critical)
+- **Sector Panels**: Individual display for each sector with:
+  - Active sensor count
+  - Average risk level
+  - Average sensitivity across sensors
+  - Total failure count (false alarms + missed events)
+  - Disagreement indicator (when sensor risks vary significantly)
+  - Active alerts with count
+- **Live Updates**: Refreshes every 500ms
+- **Independent Operation**: Runs alongside console monitor without interference
 
 ## 🚀 Getting Started
 
@@ -132,13 +163,20 @@ This system demonstrates key DAI concepts:
 
 #### Option 1: Manual Start
 
-1. **Start the monitor** (in terminal 1)
+1. **Start the console monitor** (in terminal 1)
    ```bash
    python src/monitor_mqtt.py -s 30
    ```
    - `-s 30`: Display statistics every 30 seconds
 
-2. **Start sensors** (in separate terminals)
+2. **Start the GUI monitor** (in terminal 2, optional)
+   ```bash
+   python src/monitor_gui.py
+   ```
+   - Opens graphical dashboard for real-time visualization
+   - Can run alongside console monitor
+
+3. **Start sensors** (in separate terminals)
    ```bash
    python src/sensor_mqtt.py -i 5
    python src/sensor_mqtt.py -i 5
@@ -218,10 +256,27 @@ adaptive_interval = base_interval * (1 + 0.1 * active_neighbors)
 
 ### Learning Mechanism
 
-Monitor provides feedback:
-- `false_alarm`: Decreases sensor sensitivity
-- `missed_event`: Increases sensor sensitivity
-- `correct`: Maintains current sensitivity
+The monitor analyzes sensor behavior and provides intelligent feedback:
+
+**False Alarm Detection**:
+- Too many alerts in short time (>5 in 5 minutes)
+- Sensor alerts alone without neighbor consensus
+- **Action**: Sends `false_alarm` feedback → Sensitivity decreases by 0.1 (min: 0.5)
+
+**Missed Event Detection**:
+- Sensor has high risk (>0.75) but doesn't alert
+- Neighbors are alerting for the same condition
+- **Action**: Sends `missed_event` feedback → Sensitivity increases by 0.1 (max: 1.5)
+
+**Correct Prediction**:
+- Critical risk alert confirmed by neighbors
+- Appropriate alert with consensus
+- **Action**: Sends `correct` feedback → Sensitivity converges to 1.0 (optimal)
+  - If < 1.0: increases by 0.05
+  - If > 1.0: decreases by 0.05
+  - If = 1.0: maintains
+
+**Feedback Cooldown**: 60 seconds between feedback messages to prevent oscillation
 
 ## 🛠️ Command Line Options
 
@@ -247,6 +302,20 @@ python src/sensor_mqtt.py [options]
 - `-b, --broker`: MQTT broker address (default: localhost)
 - `-p, --port`: MQTT broker port (default: 1883)
 - `-v, --verbose`: Enable debug logging
+
+### GUI Monitor
+```bash
+python src/monitor_gui.py [options]
+```
+- `-b, --broker`: MQTT broker address (default: localhost)
+- `-p, --port`: MQTT broker port (default: 1883)
+
+**Features**:
+- 6 sector panels in 2x3 grid layout
+- Real-time risk visualization with color coding
+- Sensitivity and failure tracking per sector
+- Disagreement detection between sensors
+- Active alert indicators
 
 ## 📊 System Statistics
 
@@ -325,9 +394,10 @@ Each sector represents a geographic area monitored by one sensor.
 ```
 WeatherSensors/
 ├── src/
-│   ├── monitor_mqtt.py           # Monitor/Observer component
+│   ├── monitor_mqtt.py           # Console monitor/observer with feedback
+│   ├── monitor_gui.py             # Tkinter GUI dashboard (NEW)
 │   ├── sensor_mqtt.py             # Autonomous sensor agent
-│   ├── sensor_intelligence.py    # Sensor brain (DAI logic)
+│   ├── sensor_intelligence.py    # Sensor brain (DAI logic + learning)
 │   ├── topics.py                  # MQTT topic definitions
 │   └── presets.py                 # Sensor presets and utilities
 ├── .vscode/
@@ -348,6 +418,7 @@ WeatherSensors/
 This project demonstrates concepts from:
 - **Distributed Artificial Intelligence (DAI)**
 - **Multi-Agent Systems (MAS)**
+- **Machine Learning** (Reinforcement Learning via feedback)
 - **IoT and Edge Computing**
 - **Publish-Subscribe Patterns**
 - **Consensus Algorithms**
@@ -356,10 +427,40 @@ This project demonstrates concepts from:
 Perfect for studying:
 - Agent-based systems design
 - Distributed decision making
-- Real-time data processing
+- Adaptive learning in multi-agent systems
+- Real-time data processing and visualization
 - MQTT protocol in practice
 - Autonomous system coordination
+- Feedback-based learning mechanisms
+
+## 🚀 Key Features Highlights
+
+### Intelligent Feedback System
+The monitor automatically analyzes sensor behavior and provides real-time feedback:
+- Detects when sensors generate too many alerts (false alarms)
+- Identifies when sensors miss important events
+- Confirms correct predictions with neighbor consensus
+- Sensors adapt their sensitivity dynamically (0.5 to 1.5 range)
+
+### Visual Monitoring Dashboard
+Real-time GUI shows:
+- All 6 sectors with color-coded risk levels
+- Sensor sensitivity evolution
+- Failure tracking (false alarms + missed events)
+- Disagreement detection between sensors in same sector
+- Active alerts with visual indicators
+
+### Distributed Consensus
+No central decision-maker for alerts:
+- Each sensor calculates its own risk assessment
+- Sensors share beliefs with neighbors via MQTT
+- Alerts generated only when multiple sensors agree
+- System-wide intelligence emerges from local interactions
 
 ## 📝 License
 
 This is an academic project for educational purposes.
+
+---
+
+**Note**: This system simulates weather sensors with synthetic data. For production use, integrate real sensor hardware and implement proper error handling, security, and scalability measures.
