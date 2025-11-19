@@ -265,8 +265,15 @@ class SensorBrain:
             logger.info(f"{self.sensor_id}: Missed event feedback - Increasing sensitivity to {self.sensitivity:.2f}")
         
         elif feedback_type == "correct":
-            # Good job, no change needed
-            logger.info(f"{self.sensor_id}: Correct prediction feedback")
+            # Good prediction - gradually move sensitivity back towards 1.0 (optimal)
+            if self.sensitivity < 1.0:
+                self.sensitivity = min(1.0, self.sensitivity + 0.05)
+                logger.info(f"{self.sensor_id}: Correct feedback - Increasing sensitivity to {self.sensitivity:.2f}")
+            elif self.sensitivity > 1.0:
+                self.sensitivity = max(1.0, self.sensitivity - 0.05)
+                logger.info(f"{self.sensor_id}: Correct feedback - Decreasing sensitivity to {self.sensitivity:.2f}")
+            else:
+                logger.info(f"{self.sensor_id}: Correct feedback - Maintaining optimal sensitivity {self.sensitivity:.2f}")
     
     def get_belief_summary(self) -> Dict:
         """
