@@ -166,7 +166,7 @@ class MonitorGUI:
         
         title_label = tk.Label(
             title_frame,
-            text="🌦️  Weather Monitoring System  🌦️",
+            text="Weather Monitoring System",
             font=('Arial', 24, 'bold'),
             bg=COLORS['bg_dark'],
             fg='#ffffff'
@@ -208,7 +208,7 @@ class MonitorGUI:
         
         self.status_label = tk.Label(
             status_frame,
-            text="🔌 Connecting to MQTT broker...",
+            text="Connecting to MQTT broker...",
             font=('Arial', 10),
             bg='#34495e',
             fg='#ffffff'
@@ -399,13 +399,13 @@ class MonitorGUI:
             
             # Check for disagreement
             if sector.has_disagreement():
-                panel.disagreement_label.config(text="⚠️ DISAGREEMENT")
+                panel.disagreement_label.config(text="[!] DISAGREEMENT")
             else:
                 panel.disagreement_label.config(text="")
                 
             # Check for alerts
             if sector.has_alerts():
-                alert_text = f"🚨 {len(sector.alerts)} ALERT{'S' if len(sector.alerts) > 1 else ''}"
+                alert_text = f"[ALERT] {len(sector.alerts)} ALERT{'S' if len(sector.alerts) > 1 else ''}"
                 panel.alert_label.config(text=alert_text)
             else:
                 panel.alert_label.config(text="")
@@ -420,7 +420,7 @@ class MonitorGUI:
         total_sensors = sum(len(s.active_sensors) for s in self.sectors.values())
         total_alerts = sum(len(s.alerts) for s in self.sectors.values())
         
-        status_text = f"🟢 Connected | Active Sensors: {total_sensors} | Active Alerts: {total_alerts}"
+        status_text = f"[OK] Connected | Active Sensors: {total_sensors} | Active Alerts: {total_alerts}"
         self.status_label.config(text=status_text)
         
         # Schedule next update
@@ -429,16 +429,16 @@ class MonitorGUI:
     def on_connect(self, client, userdata, flags, rc):
         """MQTT connection callback."""
         if rc == 0:
-            print("✅ GUI connected to MQTT broker")
+            print("[OK] GUI connected to MQTT broker")
             
             # Subscribe to relevant topics
             self.client.subscribe("weather/belief/#", qos=1)
             self.client.subscribe("weather/alert/#", qos=1)
             self.client.subscribe("weather/status/#", qos=1)
             
-            print("📡 Subscribed to belief, alert, and status topics")
+            print("[OK] Subscribed to belief, alert, and status topics")
         else:
-            print(f"❌ Connection failed with code {rc}")
+            print(f"[ERROR] Connection failed with code {rc}")
             
     def on_message(self, client, userdata, msg):
         """MQTT message callback."""
@@ -483,7 +483,7 @@ class MonitorGUI:
                     self.sectors[sector].update_status(sensor_id, status)
                     
         except Exception as e:
-            print(f"❌ Error processing message from {topic}: {e}")
+            print(f"[ERROR] Error processing message from {topic}: {e}")
             import traceback
             traceback.print_exc()
             
@@ -493,12 +493,12 @@ class MonitorGUI:
             self.client.connect(self.broker, self.port, keepalive=60)
             self.client.loop_forever()
         except Exception as e:
-            print(f"❌ MQTT connection error: {e}")
+            print(f"[ERROR] MQTT connection error: {e}")
             
     def run(self):
         """Start the GUI application."""
-        print("🚀 Starting Weather Monitor GUI...")
-        print(f"📡 Connecting to MQTT broker at {self.broker}:{self.port}")
+        print("Starting Weather Monitor GUI...")
+        print(f"Connecting to MQTT broker at {self.broker}:{self.port}")
         self.root.mainloop()
 
 
@@ -510,7 +510,7 @@ def load_env_config():
     
     if env_path.exists():
         load_dotenv(env_path)
-        print(f"✅ Loaded configuration from {env_path}")
+        print(f"[OK] Loaded configuration from {env_path}")
     
     return {
         "broker": os.getenv("MQTT_BROKER", "localhost"),

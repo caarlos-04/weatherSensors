@@ -2,7 +2,7 @@
 
 A **Distributed Artificial Intelligence (DAI)** system for weather monitoring using autonomous sensors with MQTT communication. Each sensor has its own intelligence module ("brain") that makes local decisions, shares beliefs with neighbors, and generates alerts through distributed consensus.
 
-## 🎯 Project Overview
+## Project Overview
 
 This system demonstrates key DAI concepts:
 - **Autonomous Agents**: Each sensor operates independently with its own decision-making logic
@@ -11,7 +11,7 @@ This system demonstrates key DAI concepts:
 - **Self-Organization**: Sensors adapt their behavior based on neighbor activity
 - **Learning**: Sensors adjust their sensitivity based on feedback
 
-## 🏗️ Architecture
+## Architecture
 
 ### Components
 
@@ -76,7 +76,7 @@ This system demonstrates key DAI concepts:
                          └─────────────┘
 ```
 
-## 📋 Features
+## Features
 
 ### Sensor Management
 - **Auto-Assignment**: Monitor automatically assigns sectors to connecting sensors
@@ -118,7 +118,7 @@ This system demonstrates key DAI concepts:
 - **Live Updates**: Refreshes every 500ms
 - **Independent Operation**: Runs alongside console monitor without interference
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -200,7 +200,7 @@ To test the 7th sensor rejection:
 2. Try to start a 7th sensor manually
 3. Observe rejection message and automatic shutdown
 
-## 📡 MQTT Topics
+## MQTT Topics
 
 ### Status Topics
 - `weather/status/{sector}/{sensor_type}/{sensor_id}` - Sensor online/offline status
@@ -223,7 +223,7 @@ To test the 7th sensor rejection:
 ### Feedback Topics
 - `weather/feedback/{sector}/{sensor_type}/{sensor_id}` - Learning feedback from monitor
 
-## 🧠 Intelligence & Decision Making
+## Intelligence & Decision Making
 
 ### Local Risk Calculation
 
@@ -278,7 +278,7 @@ The monitor analyzes sensor behavior and provides intelligent feedback:
 
 **Feedback Cooldown**: 60 seconds between feedback messages to prevent oscillation
 
-## 🛠️ Command Line Options
+## Command Line Options
 
 ### Monitor
 ```bash
@@ -317,7 +317,7 @@ python src/monitor_gui.py [options]
 - Disagreement detection between sensors
 - Active alert indicators
 
-## 📊 System Statistics
+## System Statistics
 
 The monitor displays periodic statistics including:
 
@@ -349,7 +349,7 @@ Risk Level Indicators:
 - `[!!]`: Warning (0.6-0.8)
 - `[!!!]`: Critical (0.8-1.0)
 
-## 🔧 Configuration Files
+## Configuration Files
 
 ### `.env`
 Environment configuration for MQTT connection
@@ -365,7 +365,7 @@ Debug configurations for VS Code:
 - Individual monitor/sensor launch
 - Compound configurations for full system testing
 
-## 🏷️ Sectors
+## Sectors
 
 The system supports 6 fixed sectors:
 - `sector1`
@@ -377,7 +377,7 @@ The system supports 6 fixed sectors:
 
 Each sector represents a geographic area monitored by one sensor.
 
-## 📈 DAI Concepts Demonstrated
+## DAI Concepts Demonstrated
 
 1. **Agent Autonomy**: Each sensor makes independent decisions
 2. **Distributed Problem Solving**: No central controller for alerts
@@ -389,7 +389,7 @@ Each sector represents a geographic area monitored by one sensor.
 8. **Consensus Mechanisms**: Agreement required for alert generation
 
 
-## 📚 Project Structure
+## Project Structure
 
 ```
 WeatherSensors/
@@ -413,7 +413,7 @@ WeatherSensors/
 └── README.md                      # This file
 ```
 
-## 🎓 Academic Context
+## Academic Context
 
 This project demonstrates concepts from:
 - **Distributed Artificial Intelligence (DAI)**
@@ -433,7 +433,7 @@ Perfect for studying:
 - Autonomous system coordination
 - Feedback-based learning mechanisms
 
-## 🚀 Key Features Highlights
+## Key Features Highlights
 
 ### Intelligent Feedback System
 The monitor automatically analyzes sensor behavior and provides real-time feedback:
@@ -457,7 +457,7 @@ No central decision-maker for alerts:
 - Alerts generated only when multiple sensors agree
 - System-wide intelligence emerges from local interactions
 
-## 📝 License
+## License
 
 This is an academic project for educational purposes.
 
