@@ -304,14 +304,3 @@ class SensorBrain:
             return "high"
         else:
             return "critical"
-    
-    def get_stats(self) -> Dict:
-        """Get statistics for monitoring/debugging."""
-        return {
-            "measurements_count": len(self.temp_history),
-            "local_risk": round(self.local_risk, 3),
-            "neighbors": len(self.neighbor_beliefs),
-            "sensitivity": round(self.sensitivity, 2),
-            "false_alarms": self.false_alarm_count,
-            "missed_events": self.missed_event_count
-        }

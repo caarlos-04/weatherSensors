@@ -9,10 +9,9 @@ import argparse
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from presets import make_sensor_id, sample_measurements, random_site, SITES
-from topics import (data_topic, status_topic, ctrl_one_topic, ctrl_group_topic, CTRL_SEND_ALL,
-                    belief_topic, belief_site_topic, alert_topic, feedback_topic,
-                    reject_topic, assign_sector_topic)
+from presets import make_sensor_id, sample_measurements, SITES
+from topics import (data_topic, status_topic, belief_topic, belief_site_topic, 
+                    alert_topic, feedback_topic, reject_topic, assign_sector_topic)
 from sensor_intelligence import SensorBrain
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [SENSOR] - %(levelname)s - %(message)s')
@@ -156,9 +155,6 @@ class Sensor:
             self.disconnect()
     
     def _handle_sector_assignment(self, payload: bytes):
-        """
-        Maneja asignación de sector por parte del monitor.
-        """
         try:
             assignment = json.loads(payload.decode())
             assigned_sector = assignment.get("sector")
@@ -177,9 +173,7 @@ class Sensor:
             self.site = assigned_sector
             self.sector_assigned = True
             
-            # Now subscribe to control and belief topics with correct sector
-            self.client.subscribe(ctrl_one_topic(self.site, self.sensor_type, self.sensor_id), qos=1)
-            self.client.subscribe(ctrl_group_topic(self.site, self.sensor_type), qos=1)
+            # Now subscribe to belief topics with correct sector
             self.client.subscribe(belief_site_topic(self.site, self.sensor_type), qos=1)
             self.client.subscribe(feedback_topic(self.site, self.sensor_type, self.sensor_id), qos=1)
             

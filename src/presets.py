@@ -17,9 +17,6 @@ MEASURE_RANGES = {
     }
 }
 
-def random_site() -> str:
-    return random.choice(SITES)
-
 def make_sensor_id(sensor_type: str) -> str:
 
     suffix = f"{int(time.time()*1000)%100000}-{random.randint(100,999)}"

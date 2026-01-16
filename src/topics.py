@@ -38,32 +38,7 @@ def status_topic(site: str, sensor_type: str, sensor_id: str) -> str:
 
 
 # ====== CONTROL COMMANDS (FROM MONITOR TO SENSORS) ======
-
-CTRL_SEND_ALL = "weather/control/all"
-
-def ctrl_group_topic(site: str, sensor_type: str) -> str:
-    """
-    Control broadcast to all sensors of a given type at one site.
-    Example: weather/control/pyrenees/meteo/all
-    """
-    return f"weather/control/{site}/{sensor_type}/all"
-
-def ctrl_one_topic(site: str, sensor_type: str, sensor_id: str) -> str:
-    """
-    Unicast control to a specific sensor.
-    Example: weather/control/pyrenees/meteo/meteo-001
-    """
-    return f"weather/control/{site}/{sensor_type}/{sensor_id}"
-
-
-# ====== CONFIGURATION ======
-
-def config_topic(site: str, sensor_type: str, sensor_id: str) -> str:
-    """
-    Persistent configuration (thresholds, calibration...).
-    Example: weather/config/pyrenees/meteo/meteo-001
-    """
-    return f"weather/config/{site}/{sensor_type}/{sensor_id}"
+# Note: Control topics are handled via reject_topic and assign_sector_topic
 
 
 # ====== ALERTS ======
@@ -124,8 +99,6 @@ def assign_sector_topic(sensor_id: str) -> str:
 
 DATA_ALL          = "weather/data/#"
 STATUS_ALL        = "weather/status/#"
-CONTROL_ALL       = "weather/control/#"
-CONFIG_ALL        = "weather/config/#"
 ALERT_ALL         = "weather/alert/#"
 BELIEF_ALL        = "weather/belief/#"
 FEEDBACK_ALL      = "weather/feedback/#"

@@ -9,9 +9,8 @@ import argparse
 import threading
 from datetime import datetime
 from collections import defaultdict
-from topics import (DATA_ALL, STATUS_ALL, CTRL_SEND_ALL, CONTROL_ALL, CONFIG_ALL, 
-                    ALERT_ALL, BELIEF_ALL, FEEDBACK_ALL, feedback_topic, 
-                    reject_topic, assign_sector_topic)
+from topics import (DATA_ALL, STATUS_ALL, ALERT_ALL, BELIEF_ALL, FEEDBACK_ALL, 
+                    feedback_topic, reject_topic, assign_sector_topic)
 
 logging.basicConfig(
     level=logging.INFO,
