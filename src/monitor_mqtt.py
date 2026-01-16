@@ -602,7 +602,7 @@ class WeatherMonitor:
     
     def _command_loop(self):
         """Background thread to handle user commands"""
-        logger.info("\n🎮 Commands available: 'status' | 'quit'")
+        logger.info("\n Commands available: 'status' | 'quit'")
         while self.running:
             try:
                 cmd = input("> ").strip().lower()

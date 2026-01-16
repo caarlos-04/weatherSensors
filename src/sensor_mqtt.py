@@ -116,9 +116,6 @@ class Sensor:
             elif "/feedback/" in topic:
                 self._handle_feedback(msg.payload)
             
-            # Control commands
-            elif "/control/" in topic:
-                self._handle_control_command(msg.payload)
             
             else:
                 logger.debug(f"{self.sensor_id}: Unhandled message on {topic}")
@@ -226,31 +223,6 @@ class Sensor:
         except Exception as e:
             logger.error(f"{self.sensor_id}: Error processing feedback: {e}")
     
-    def _handle_control_command(self, payload: bytes):
-        """Process control commands from monitor."""
-        try:
-            command = json.loads(payload.decode())
-            cmd_type = command.get("command")
-            
-            if cmd_type == "adjust_interval":
-                new_interval = command.get("interval", self.publish_interval)
-                self.publish_interval = new_interval
-                logger.info(f"{self.sensor_id}: Interval adjusted to {new_interval}s")
-            
-            elif cmd_type == "reset_learning":
-                self.brain.sensitivity = 1.0
-                self.brain.false_alarm_count = 0
-                self.brain.missed_event_count = 0
-                logger.info(f"{self.sensor_id}: Learning parameters reset")
-            
-            elif cmd_type == "SHUTDOWN":
-                reason = command.get("reason", "Monitor shutdown")
-                logger.warning(f"{self.sensor_id}: Received shutdown command - {reason}")
-                self.running = False
-                self.disconnect()
-            
-        except Exception as e:
-            logger.error(f"{self.sensor_id}: Error processing control command: {e}")
     
     def on_disconnect(self, client, userdata, rc):
         """Callback when disconnecting"""
@@ -263,7 +235,6 @@ class Sensor:
             logger.info(f"{self.sensor_id}: Connecting to {self.broker}:{self.port}")
 
             # Configure Last Will Testament (LWT) for offline status
-            # Si no tenemos sector asignado, usar "pending" temporalmente
             lwt_site = self.site or "pending"
             lwt_payload = json.dumps({
                 "sensor_id": self.sensor_id,
