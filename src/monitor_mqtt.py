@@ -72,7 +72,7 @@ class WeatherMonitor:
         
         # Feedback tracking for learning
         self.sensor_alert_history = defaultdict(list)  # {sensor_id: [alert_timestamps]}
-        self.feedback_cooldown = 60  # Seconds between feedback messages
+        self.feedback_cooldown = 20  # Seconds between feedback messages (reduced for more frequent feedback)
         self.last_feedback_time = defaultdict(float)  # {sensor_id: last_feedback_timestamp}
         
         # Statistics
@@ -335,27 +335,62 @@ class WeatherMonitor:
         if current_time - self.last_feedback_time[sensor_id] < self.feedback_cooldown:
             return
         
-        # If risk is very high but sensor is not alerting, it might be missing events
-        if local_risk > 0.75 and not would_alert:
-            sector = self.sensor_sectors.get(sensor_id, "unknown")
-            sensor_type = "meteo"
+        sector = self.sensor_sectors.get(sensor_id, "unknown")
+        sensor_type = "meteo"
+        
+        # Get neighbors in the same sector
+        sector_sensors = [sid for sid, sect in self.sensor_sectors.items() 
+                        if sect == sector and sid != sensor_id]
+        
+        if not sector_sensors:
+            return  # No neighbors to compare with
+        
+        # Check how many neighbors are alerting
+        neighbors_alerting = []
+        neighbors_high_risk = []
+        
+        for neighbor_id in sector_sensors:
+            neighbor_belief = self.sensor_beliefs.get(neighbor_id, {})
+            neighbor_risk = neighbor_belief.get("local_risk", 0.0)
+            neighbor_would_alert = neighbor_belief.get("would_alert", False)
             
-            # Check if neighbors are alerting
-            sector_sensors = [sid for sid, sect in self.sensor_sectors.items() 
-                            if sect == sector and sid != sensor_id]
-            
-            neighbors_alerting = False
-            for neighbor_id in sector_sensors:
-                neighbor_belief = self.sensor_beliefs.get(neighbor_id, {})
-                if neighbor_belief.get("would_alert", False):
-                    neighbors_alerting = True
-                    break
-            
-            if neighbors_alerting:
-                # Neighbors are alerting but this sensor isn't - missed event
-                logger.info(f"FEEDBACK: {sensor_id} has high risk ({local_risk:.2f}) but not alerting while neighbors are - sending MISSED_EVENT feedback")
-                self._send_feedback(sensor_id, sector, sensor_type, "missed_event")
-                self.last_feedback_time[sensor_id] = current_time
+            if neighbor_would_alert:
+                neighbors_alerting.append(neighbor_id)
+            if neighbor_risk > 0.5:  # Lowered from 0.6 to detect more cases
+                neighbors_high_risk.append(neighbor_id)
+        
+        # Debug logging
+        if len(neighbors_alerting) > 0 or len(neighbors_high_risk) > 0:
+            logger.debug(f"MISSED_EVENT CHECK [{sensor_id}]: local_risk={local_risk:.2f}, would_alert={would_alert}, "
+                        f"neighbors_alerting={len(neighbors_alerting)}, neighbors_high_risk={len(neighbors_high_risk)}")
+        
+        # Case 1: Multiple neighbors alerting but this sensor isn't (ANY risk level)
+        if len(neighbors_alerting) >= 2 and not would_alert and local_risk > 0.2:  # Very low threshold
+            logger.warning(f"MISSED_EVENT [{sensor_id}]: Risk={local_risk:.2f}, NOT alerting while {len(neighbors_alerting)} neighbors ARE alerting - sending MISSED_EVENT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "missed_event")
+            self.last_feedback_time[sensor_id] = current_time
+            return
+        
+        # Case 2: Moderate risk but not alerting while neighbors also show moderate+ risk
+        if local_risk > 0.5 and not would_alert and len(neighbors_high_risk) >= 1:
+            logger.warning(f"MISSED_EVENT [{sensor_id}]: Moderate risk ({local_risk:.2f}), NOT alerting while neighbors have high risk - sending MISSED_EVENT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "missed_event")
+            self.last_feedback_time[sensor_id] = current_time
+            return
+        
+        # Case 3: Even one neighbor alerting should trigger if this sensor has some risk
+        if len(neighbors_alerting) >= 1 and not would_alert and local_risk > 0.3:
+            logger.warning(f"MISSED_EVENT [{sensor_id}]: Risk={local_risk:.2f}, neighbors alerting but sensor NOT - sending MISSED_EVENT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "missed_event")
+            self.last_feedback_time[sensor_id] = current_time
+            return
+        
+        # Case 4: High neighbors risk even if this sensor's risk is lower
+        if len(neighbors_high_risk) >= 2 and not would_alert and local_risk > 0.25:
+            logger.warning(f"MISSED_EVENT [{sensor_id}]: Multiple neighbors show high risk but sensor (risk={local_risk:.2f}) NOT alerting - sending MISSED_EVENT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "missed_event")
+            self.last_feedback_time[sensor_id] = current_time
+            return
     
     def _assign_sector(self, sensor_id: str) -> str:
         """
@@ -447,10 +482,10 @@ class WeatherMonitor:
         # Record this alert
         self.sensor_alert_history[sensor_id].append(current_time)
         
-        # Clean old alerts (keep last 5 minutes)
+        # Clean old alerts (keep last 2 minutes - shorter window)
         self.sensor_alert_history[sensor_id] = [
             t for t in self.sensor_alert_history[sensor_id]
-            if current_time - t < 300
+            if current_time - t < 120  # 2 minutes instead of 5
         ]
         
         # Check if we should send feedback (cooldown)
@@ -464,40 +499,52 @@ class WeatherMonitor:
         sector = self.sensor_sectors.get(sensor_id, "unknown")
         sensor_type = "meteo"  # All sensors are meteo type
         
-        if recent_alerts > 5:
+        # Check if neighbors also alerted (expanded window)
+        sector_sensors = [sid for sid, sect in self.sensor_sectors.items() if sect == sector and sid != sensor_id]
+        neighbors_alerted = 0
+        
+        for neighbor_id in sector_sensors:
+            neighbor_alerts = self.sensor_alert_history.get(neighbor_id, [])
+            # Check if neighbor alerted in last 90 seconds (more flexible)
+            if any(current_time - t < 90 for t in neighbor_alerts):
+                neighbors_alerted += 1
+        
+        # Balanced feedback logic with realistic thresholds
+        if recent_alerts > 8:  # More than 8 alerts in 2 minutes = excessive
             # Too many alerts in short time - probably too sensitive
-            logger.info(f"FEEDBACK: {sensor_id} generated {recent_alerts} alerts recently - sending FALSE_ALARM feedback")
+            logger.info(f"FEEDBACK: {sensor_id} generated {recent_alerts} alerts in 2min - sending FALSE_ALARM feedback")
             self._send_feedback(sensor_id, sector, sensor_type, "false_alarm")
             self.last_feedback_time[sensor_id] = current_time
             
-        elif risk_level > 0.8 and recent_alerts == 1:
-            # Very high risk and first alert - likely correct
-            logger.info(f"FEEDBACK: {sensor_id} detected critical risk - sending CORRECT feedback")
+        elif risk_level > 0.75:  # Very high risk
+            # High risk - likely correct
+            logger.info(f"FEEDBACK: {sensor_id} detected high risk ({risk_level:.2f}) - sending CORRECT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "correct")
+            self.last_feedback_time[sensor_id] = current_time
+            
+        elif neighbors_alerted >= 2:  # Strong consensus - multiple neighbors
+            # Multiple neighbors agree - strong confirmation
+            logger.info(f"FEEDBACK: {sensor_id} alert confirmed by {neighbors_alerted} neighbors - sending CORRECT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "correct")
+            self.last_feedback_time[sensor_id] = current_time
+            
+        elif neighbors_alerted == 1 and recent_alerts <= 4:
+            # One neighbor confirms and not alerting too much
+            logger.info(f"FEEDBACK: {sensor_id} alert confirmed by 1 neighbor, moderate frequency - sending CORRECT feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "correct")
+            self.last_feedback_time[sensor_id] = current_time
+            
+        elif recent_alerts <= 2:  # Very infrequent alerting
+            # Low frequency, likely valid early detection
+            logger.info(f"FEEDBACK: {sensor_id} infrequent alert ({recent_alerts} in 2min) - sending CORRECT feedback")
             self._send_feedback(sensor_id, sector, sensor_type, "correct")
             self.last_feedback_time[sensor_id] = current_time
             
         else:
-            # Moderate case - check if neighbors also alerted
-            sector_sensors = [sid for sid, sect in self.sensor_sectors.items() if sect == sector and sid != sensor_id]
-            neighbor_alerted = False
-            
-            for neighbor_id in sector_sensors:
-                neighbor_alerts = self.sensor_alert_history.get(neighbor_id, [])
-                # Check if neighbor alerted in last 30 seconds
-                if any(current_time - t < 30 for t in neighbor_alerts):
-                    neighbor_alerted = True
-                    break
-            
-            if neighbor_alerted:
-                # Neighbors agree - correct alert
-                logger.info(f"FEEDBACK: {sensor_id} alert confirmed by neighbors - sending CORRECT feedback")
-                self._send_feedback(sensor_id, sector, sensor_type, "correct")
-                self.last_feedback_time[sensor_id] = current_time
-            else:
-                # Alone in alerting - might be false alarm
-                logger.info(f"FEEDBACK: {sensor_id} alerted alone (no neighbor consensus) - sending FALSE_ALARM feedback")
-                self._send_feedback(sensor_id, sector, sensor_type, "false_alarm")
-                self.last_feedback_time[sensor_id] = current_time
+            # Alerting alone without strong confirmation - likely false alarm
+            logger.info(f"FEEDBACK: {sensor_id} alerting alone ({recent_alerts} times in 2min, neighbors={neighbors_alerted}) - sending FALSE_ALARM feedback")
+            self._send_feedback(sensor_id, sector, sensor_type, "false_alarm")
+            self.last_feedback_time[sensor_id] = current_time
     
     def _send_feedback(self, sensor_id: str, site: str, sensor_type: str, feedback_type: str):
         """

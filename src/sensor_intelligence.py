@@ -15,6 +15,7 @@ from collections import deque
 from typing import Dict, List, Optional
 import statistics
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,8 @@ class SensorBrain:
         self.local_risk = 0.0  # Current risk level (0.0 - 1.0)
         self.risk_threshold = 0.6  # Threshold for generating alerts
         
-        # Learning parameters
-        self.sensitivity = 1.0  # Multiplier for risk calculation (adjustable)
+        # Learning parameters - Initialize with random sensitivity for diversity
+        self.sensitivity = random.uniform(0.8, 1.2)  # Multiplier for risk calculation (adjustable)
         self.false_alarm_count = 0
         self.missed_event_count = 0
         
@@ -57,7 +58,7 @@ class SensorBrain:
         self.active_neighbors_count = 0
         self.base_interval = 5  # Base publishing interval
         
-        logger.info(f"SensorBrain initialized for {sensor_id}")
+        logger.info(f"SensorBrain initialized for {sensor_id} with sensitivity={self.sensitivity:.2f}")
     
     def add_measurement(self, temp: float, pressure: float, humidity: float):
         """
@@ -254,26 +255,21 @@ class SensorBrain:
         """
         if feedback_type == "false_alarm":
             self.false_alarm_count += 1
-            # Too sensitive, reduce sensitivity
-            self.sensitivity = max(0.5, self.sensitivity - 0.1)
+            # Too sensitive, reduce sensitivity (small step)
+            self.sensitivity = max(0.5, self.sensitivity - 0.05)
             logger.info(f"{self.sensor_id}: False alarm feedback - Reducing sensitivity to {self.sensitivity:.2f}")
         
         elif feedback_type == "missed_event":
             self.missed_event_count += 1
-            # Not sensitive enough, increase sensitivity
-            self.sensitivity = min(1.5, self.sensitivity + 0.1)
+            # Not sensitive enough, increase sensitivity (large step)
+            self.sensitivity = min(1.5, self.sensitivity + 0.2)
             logger.info(f"{self.sensor_id}: Missed event feedback - Increasing sensitivity to {self.sensitivity:.2f}")
         
         elif feedback_type == "correct":
-            # Good prediction - gradually move sensitivity back towards 1.0 (optimal)
-            if self.sensitivity < 1.0:
-                self.sensitivity = min(1.0, self.sensitivity + 0.05)
-                logger.info(f"{self.sensor_id}: Correct feedback - Increasing sensitivity to {self.sensitivity:.2f}")
-            elif self.sensitivity > 1.0:
-                self.sensitivity = max(1.0, self.sensitivity - 0.05)
-                logger.info(f"{self.sensor_id}: Correct feedback - Decreasing sensitivity to {self.sensitivity:.2f}")
-            else:
-                logger.info(f"{self.sensor_id}: Correct feedback - Maintaining optimal sensitivity {self.sensitivity:.2f}")
+            # Good prediction - reinforce and reward with significant boost
+            old_sensitivity = self.sensitivity
+            self.sensitivity = min(1.5, self.sensitivity + 0.08)
+            logger.info(f"{self.sensor_id}: Correct feedback - Reinforcing good behavior {old_sensitivity:.2f} -> {self.sensitivity:.2f}")
     
     def get_belief_summary(self) -> Dict:
         """
